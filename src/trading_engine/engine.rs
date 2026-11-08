@@ -7,6 +7,20 @@ use rust_decimal::Decimal;
 use sqlx::{PgPool, Postgres, Transaction};
 use std::collections::{HashMap, HashSet};
 
+fn validate_balance(balance: &Balances) -> Result<(), sqlx::Error> {
+    if balance.balance_btc < Decimal::ZERO
+        || balance.balance_inr < Decimal::ZERO
+        || balance.reserved_btc < Decimal::ZERO
+        || balance.reserved_inr < Decimal::ZERO
+    {
+        return Err(sqlx::Error::Protocol(format!(
+            "negative balance for user {}",
+            balance.user_id
+        )));
+    }
+    Ok(())
+}
+
 pub async fn settle_trades(
     user_id: i32,
     incoming: &Order,
@@ -38,6 +52,7 @@ pub async fn settle_trades(
         .bind(id)
         .fetch_one(&mut **tx)
         .await?;
+        validate_balance(&balance)?;
         balances.insert(id, balance);
     }
 
@@ -50,6 +65,7 @@ pub async fn settle_trades(
             };
             buyer.balance_btc += qty;
             buyer.reserved_inr -= value;
+            validate_balance(buyer)?;
         }
 
         {
@@ -58,6 +74,7 @@ pub async fn settle_trades(
             };
             seller.balance_inr += value;
             seller.reserved_btc -= qty;
+            validate_balance(seller)?;
         }
         sqlx::query(
             "INSERT INTO trades (buyer_id , seller_id ,qty , price) VALUES ($1, $2, $3, $4)",
@@ -105,9 +122,11 @@ pub async fn settle_trades(
             balance.reserved_btc -= excess;
             balance.balance_btc += excess;
         }
+        validate_balance(balance)?;
     }
 
     for (id, balance) in balances.iter() {
+        validate_balance(balance)?;
         sqlx::query(
             "UPDATE balances SET balance_btc=$1, balance_inr=$2, reserved_btc=$3, reserved_inr=$4 \
              WHERE user_id=$5",

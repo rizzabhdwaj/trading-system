@@ -22,21 +22,31 @@ pub async fn reserve_sell_balance(
 
     let required_btc = Decimal::from(qty);
 
-    let result = sqlx::query(
+    let updated: Option<(Decimal, Decimal)> = sqlx::query_as(
         "UPDATE balances
          SET balance_btc = balance_btc - $1,
              reserved_btc = reserved_btc + $1
          WHERE user_id = $2
-           AND balance_btc >= $1",
+           AND $1 > 0
+           AND balance_btc >= $1
+         RETURNING balance_btc, reserved_btc",
     )
     .bind(required_btc)
     .bind(user_id)
-    .execute(&mut **tx)
+    .fetch_optional(&mut **tx)
     .await?;
+
+    if let Some((balance_btc, reserved_btc)) = &updated {
+        if *balance_btc < Decimal::ZERO || *reserved_btc < Decimal::ZERO {
+            return Err(sqlx::Error::Protocol(
+                "negative BTC balance after reservation".to_string(),
+            ));
+        }
+    }
 
     let elapsed = start.elapsed().as_micros() as u64;
     metrics.record_reserve_balance(elapsed);
-    Ok(result.rows_affected())
+    Ok(u64::from(updated.is_some()))
 }
 
 pub async fn reserve_buy_balance(
@@ -50,21 +60,31 @@ pub async fn reserve_buy_balance(
 
     let required_inr = Decimal::from(qty) * Decimal::from(price);
 
-    let result = sqlx::query(
+    let updated: Option<(Decimal, Decimal)> = sqlx::query_as(
         "UPDATE balances
          SET balance_inr = balance_inr - $1,
              reserved_inr = reserved_inr + $1
          WHERE user_id = $2
-           AND balance_inr >= $1",
+           AND $1 > 0
+           AND balance_inr >= $1
+         RETURNING balance_inr, reserved_inr",
     )
     .bind(required_inr)
     .bind(user_id)
-    .execute(&mut **tx)
+    .fetch_optional(&mut **tx)
     .await?;
+
+    if let Some((balance_inr, reserved_inr)) = &updated {
+        if *balance_inr < Decimal::ZERO || *reserved_inr < Decimal::ZERO {
+            return Err(sqlx::Error::Protocol(
+                "negative INR balance after reservation".to_string(),
+            ));
+        }
+    }
 
     let elapsed = start.elapsed().as_micros() as u64;
     metrics.record_reserve_balance(elapsed);
-    Ok(result.rows_affected())
+    Ok(u64::from(updated.is_some()))
 }
 
 pub fn ConvertToOrder(req: &OrderRequest, user_id: i32) -> Order {

@@ -44,7 +44,7 @@ pub async fn api_gateway(
                     .service(get_my_orders),
             )
     })
-    .bind(("127.0.0.1", PORT))?
+    .bind(("0.0.0.0", PORT))?
     .run()
     .await
 }
