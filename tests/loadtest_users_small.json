@@ -1,0 +1,52 @@
+[
+  {
+    "username": "bench_0",
+    "password": "pass_0",
+    "role": "seller"
+  },
+  {
+    "username": "bench_1",
+    "password": "pass_1",
+    "role": "seller"
+  },
+  {
+    "username": "bench_2",
+    "password": "pass_2",
+    "role": "seller"
+  },
+  {
+    "username": "bench_3",
+    "password": "pass_3",
+    "role": "seller"
+  },
+  {
+    "username": "bench_4",
+    "password": "pass_4",
+    "role": "seller"
+  },
+  {
+    "username": "bench_50",
+    "password": "pass_50",
+    "role": "buyer"
+  },
+  {
+    "username": "bench_51",
+    "password": "pass_51",
+    "role": "buyer"
+  },
+  {
+    "username": "bench_52",
+    "password": "pass_52",
+    "role": "buyer"
+  },
+  {
+    "username": "bench_53",
+    "password": "pass_53",
+    "role": "buyer"
+  },
+  {
+    "username": "bench_54",
+    "password": "pass_54",
+    "role": "buyer"
+  }
+]
