@@ -1,3 +1,7 @@
+[workspace]
+members = ["orderbook"]
+resolver = "2"
+
 [package]
 name = "trading_engine"
 version = "0.1.0"
