@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package orderbook;
+
+service OrderBook {
+  rpc PlaceOrder(PlaceOrderRequest) returns (PlaceOrderResponse);
+  rpc GetOrderBook(GetOrderBookRequest) returns (GetOrderBookResponse);
+  rpc SetRestingOrderId(SetRestingOrderIdRequest) returns (SetRestingOrderIdResponse);
+}
+
+message PlaceOrderRequest {
+  string command_id = 1;
+  int32 user_id = 2;
+  string side = 3;
+  string qty = 4;
+  string price = 5;
+}
+
+message PlaceOrderResponse {
+  string command_id = 1;
+  repeated Trade trades = 2;
+  Order resting_order = 3;
+  repeated int32 fulfilled_order_ids = 4;
+}
+
+message Trade {
+  int32 buyer_id = 1;
+  int32 seller_id = 2;
+  string qty = 3;
+  string price = 4;
+}
+
+message Order {
+  int32 user_id = 1;
+  string side = 2;
+  string qty = 3;
+  string price = 4;
+}
+
+message GetOrderBookRequest {}
+
+message GetOrderBookResponse {
+  string orderbook_json = 1;
+}
+
+message SetRestingOrderIdRequest {
+  string side = 1;
+  string price = 2;
+  int32 order_id = 3;
+}
+
+message SetRestingOrderIdResponse {}

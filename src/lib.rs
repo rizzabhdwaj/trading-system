@@ -4,6 +4,7 @@ pub mod domain;
 pub mod matching_engine;
 pub mod metrics;
 pub mod middleware;
+pub mod orderbook_proto;
 pub mod MDS;
 pub mod OMS;
 pub mod trading_engine;

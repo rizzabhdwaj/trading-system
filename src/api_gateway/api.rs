@@ -2,22 +2,23 @@ use crate::OMS::order_management::{display_orderbook, fetch_order, get_balance, 
 use crate::api_gateway::metrics_handler::get_metrics;
 use crate::auth;
 use crate::domain::market::{MarketData, SocketServer};
-use crate::matching_engine::orderbook::OrderBook;
 use crate::metrics::MetricsCollector;
 use crate::middleware::auth_middleware::validator;
+use crate::orderbook_proto::order_book_client::OrderBookClient;
 
 use std::sync::{Arc, Mutex};
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, web};
 use actix_web_httpauth::middleware::HttpAuthentication;
+use tonic::transport::Channel;
 
 const PORT: u16 = 8080;
 
 pub async fn api_gateway(
     socket_server: Arc<SocketServer>,
     market: Arc<Mutex<MarketData>>,
-    orderbook: Arc<Mutex<OrderBook>>,
+    orderbook_client: OrderBookClient<Channel>,
     pool: sqlx::PgPool,
     metrics: Arc<MetricsCollector>,
 ) -> std::io::Result<()> {
@@ -28,7 +29,7 @@ pub async fn api_gateway(
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(Some(pool.clone())))
-            .app_data(web::Data::new(orderbook.clone()))
+            .app_data(web::Data::new(orderbook_client.clone()))
             .app_data(web::Data::new(market.clone()))
             .app_data(web::Data::new(socket_server.clone()))
             .app_data(web::Data::new(metrics.clone()))

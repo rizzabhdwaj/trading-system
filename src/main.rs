@@ -6,33 +6,35 @@ mod domain;
 mod matching_engine;
 mod metrics;
 mod middleware;
+mod orderbook_proto;
 mod trading_engine;
 use api_gateway::api;
 use api_gateway::db;
 use domain::market::{MarketData, SocketServer};
 use dotenvy::dotenv;
-use matching_engine::orderbook::OrderBook;
 use metrics::MetricsCollector;
+use orderbook_proto::order_book_client::OrderBookClient;
 use sqlx::PgPool;
 use std::sync::{Arc, Mutex};
-use trading_engine::engine::update_orderbook;
+use tonic::transport::Channel;
 
-async fn startup() -> (PgPool, Arc<Mutex<OrderBook>>) {
+async fn startup() -> Result<(PgPool, OrderBookClient<Channel>), Box<dyn std::error::Error>> {
     let database_url = std::env::var("DATABASE_URL").expect("database url not found");
-    let pool = db::init_pool(&database_url)
-        .await
-        .expect("db connection failed");
+    let pool = db::init_pool(&database_url).await?;
+    let configured_address = std::env::var("ORDERBOOK_GRPC_URL")
+        .unwrap_or_else(|_| "127.0.0.1:50051".to_string());
+    let address = if configured_address.contains("://") {
+        configured_address
+    } else {
+        format!("http://{configured_address}")
+    };
+    let client = OrderBookClient::connect(address).await?;
 
-    let mut orderbook = OrderBook::new();
-    update_orderbook(&mut orderbook, &pool)
-        .await
-        .expect("failed to load resting orders from db");
-
-    (pool, Arc::new(Mutex::new(orderbook)))
+    Ok((pool, client))
 }
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     tracing_subscriber::fmt()
         .with_target(false)
@@ -41,7 +43,7 @@ async fn main() -> std::io::Result<()> {
 
     let market = Arc::new(Mutex::new(MarketData::new()));
     let socket_server = Arc::new(SocketServer::new());
-    let (pool, orderbook) = startup().await;
+    let (pool, orderbook_client) = startup().await?;
     let metrics = Arc::new(MetricsCollector::new());
 
     let run_server = socket_server.clone();
@@ -51,5 +53,6 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
-    api::api_gateway(socket_server, market, orderbook, pool, metrics).await
+    api::api_gateway(socket_server, market, orderbook_client, pool, metrics).await?;
+    Ok(())
 }
